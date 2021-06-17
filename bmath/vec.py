@@ -55,14 +55,10 @@ class Arrow:
 
     def update(self):
         self.arrow = self.head - self.tail
-        # if self.arrow.length() == 0:
-        #     raise Exception(print(a))
-
 
     def arotate(self, axis, theta):
         self.arrow.arotate(axis, theta)
         self.head = self.arrow + self.tail
-        self.update()
         return self
 
     def get_array(self, n, array):
@@ -97,3 +93,57 @@ class Arrow:
             return self.calc(y=np.linspace(self.tail.y, self.head.y, linspace))
         elif abs(self.arrow.z) > 1 / linspace:
             return self.calc(z=np.linspace(self.tail.z, self.head.z, linspace))
+
+
+class AxisNode:
+    def __init__(self, axis, scopes, name='default-axis'):
+        if scopes == None:
+            raise ValueError('scopes cant be None')
+        for scope in scopes:
+            correct_type = isinstance(scope, Arrow) or isinstance(scope, Vec)
+            if not correct_type:
+                raise ValueError(str(scope) + ' is not a arrow')
+        self.axis = axis
+        self.scopes = scopes
+
+    def arotate(self, theta):
+        for vec in self.scopes:
+            vec.arotate(self.axis, theta)
+        return self
+    
+
+
+class Joint:
+    def __init__(self, axis_nodes, name='default-joint'):
+        self.axis_list = axis_nodes
+        self.build()
+
+    def build(self):
+        self.axis_map = {}
+        for axis_node in self.axis_list:
+            self.axis_map[axis_node.name] = axis_node
+    
+    def arotate(self, axis_name, theta):
+        if axis_name in self.axis_map.keys:
+            self.axis_map[axis_name].arotate(theta)
+        return self
+
+a = Vec(0,0,0, 'zero')
+b = Vec(1,1,1, 'mid')
+c = Vec(2,2,1.5, 'top')
+
+vaxis = Vec(0,0,1, 'vaxis')
+h1axis = Vec(0,1,0, 'h1axis')
+h2axis = Vec(0,1,0, 'h2axis')
+raxis = Vec(1,0,0, 'raxis')
+# vaxis -> [b, c, h1axis, h2axis, raxis] raxis -> [b, c, h1axis, h2axis] h1axis -> [b, c] h2axis -> [c]
+br = Arrow(b, a, 'mid-arrow')
+cr = Arrow(c, b, 'top-arrow')
+
+van = AxisNode(vaxis, [br, cr, h1axis, h2axis, raxis], name='v-axis')
+ran = AxisNode(raxis, [br, cr, h1axis, h2axis], name='r-axis')
+h1an = AxisNode(h1axis, [br, cr], name='h1-axis')
+h2an = AxisNode(h2axis, [cr], name='h2-axis')
+
+leg = Joint([van, ran, h1an, h2an], name='leg1')
+leg.arotate('v-axis', 60)
