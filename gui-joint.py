@@ -23,8 +23,8 @@ x = line['x']
 y = line['y']
 ax1.scatter3D(x,y,z, cmap='Blues')
 
-for i in range(72):
-    arrow.arotate(axis, 5)
+for i in range(10):
+    arrow.arotate(axis, 36)
     line = arrow.line(2)
 
     z = line['z']
