@@ -95,6 +95,17 @@ class Arrow:
             return self.calc(z=np.linspace(self.tail.z, self.head.z, linspace))
 
 
+class ArmNode:
+    def __init__(self, vec, next_vec=None):
+        condtion = not isinstance(next_vec, ArmNode) and next_vec != None
+        if not isinstance(vec, Arrow) or condtion:
+            raise ValueError('vec must be Arrow and next_vec must be ArmNode or None')
+        self.vec = vec
+        self.next_vec = next_vec
+    
+    def set_next(self, next_vec=None):
+        self.next_vec = next_vec
+
 class AxisNode:
     def __init__(self, axis, scopes, name='default-axis'):
         if scopes == None:
@@ -118,9 +129,11 @@ class AxisNode:
 
 
 class Joint:
-    def __init__(self, axis_nodes, name='default-joint'):
+    def __init__(self, axis_nodes, root, name='default-joint'):
         self.axis_list = axis_nodes
         self.name = name
+        self.root = root
+        self.current = root
         self.build()
 
     def __str__(self):
@@ -135,4 +148,19 @@ class Joint:
         if axis_name in self.axis_map.keys():
             self.axis_map[axis_name].arotate(theta)
         return self
+
+    def coordinate(self, linspace=1000):
+        if self.current == None:
+            return {}
+        coo = {'x': np.array([]), 'y': np.array([]), 'z': np.array([])}
+        while self.current:
+            tmp = self.current.vec.line(linspace)
+            coo['x'] = np.append(coo['x'], tmp['x'])
+            coo['y'] = np.append(coo['y'], tmp['y'])
+            coo['z'] = np.append(coo['z'], tmp['z'])
+            self.current = self.current.next_vec
+        self.current = self.root
+        print (coo)
+        return coo
+        
 
