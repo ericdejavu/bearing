@@ -5,17 +5,26 @@ import numpy as np
 from bmath.vec import *
 
 
+a = Vec(0,0,0, 'zero')
+b = Vec(1,1,1, 'mid')
+c = Vec(2,2,1.5, 'top')
 
-o = Vec(0,0,0)
-a = Vec(1,1,1)
-axis = Vec(1,1,0)
-axis.normalize()
-arrow = Arrow(a,o)
+vaxis = Vec(0,0,1, 'vaxis')
+h1axis = Vec(0,1,0, 'h1axis')
+h2axis = Vec(0,1,0, 'h2axis')
+raxis = Vec(1,0,0, 'raxis')
+# vaxis -> [b, c, h1axis, h2axis, raxis] raxis -> [b, c, h1axis, h2axis] h1axis -> [b, c] h2axis -> [c]
+br = Arrow(b, a, 'mid-arrow')
+cr = Arrow(c, b, 'top-arrow')
 
-# for i in range(120):
-#     arrow.arotate(axis, 30)
-#     print(arrow.length())
+van = AxisNode(vaxis, [br, cr, h1axis, h2axis, raxis], name='v-axis')
+ran = AxisNode(raxis, [br, cr, h1axis, h2axis], name='r-axis')
+h1an = AxisNode(h1axis, [br, cr], name='h1-axis')
+h2an = AxisNode(h2axis, [cr], name='h2-axis')
 
-for i in range(120):
-    a.arotate(axis, 30)
-    print(a.x**2 + a.y**2 + a.z**2)
+leg = Joint([van, ran, h1an, h2an], name='leg0')
+
+
+
+for i in range(20):
+    print (leg.arotate('v-axis', 60))
