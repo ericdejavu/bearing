@@ -17,6 +17,9 @@ class Vec:
     def __str__(self):
         return self.name + ': [' + str(self.x) + ', ' + str(self.y) + ', ' + str(self.z) + ']'
 
+    def dcopy(self, vec):
+        self.x,self.y,self.z = vec.x,vec.y,vec.z
+
     def update(self, x, y, z):
         self.x = x
         self.y = y
@@ -44,7 +47,7 @@ class Vec:
 
 
 class Arrow:
-    def __init__(self, head, tail, name="default-arrow"):
+    def __init__(self, tail, head, name="default-arrow"):
         self.head = head
         self.tail = tail
         self.name = name
@@ -52,6 +55,11 @@ class Arrow:
 
     def __str__(self):
         return self.name + ': {head-> ' + str(self.head) + ', tail-> ' + str(self.tail) + '}'
+
+    def rebuild(self, tail, head):
+        self.head = head
+        self.tail = tail
+        self.update()
 
     def update(self):
         self.arrow = self.head - self.tail
@@ -94,46 +102,53 @@ class Arrow:
         elif abs(self.arrow.z) > 1 / linspace:
             return self.calc(z=np.linspace(self.tail.z, self.head.z, linspace))
 
-
-class ArmNode:
-    def __init__(self, vec, next_vec=None):
-        condtion = not isinstance(next_vec, ArmNode) and next_vec != None
-        if not isinstance(vec, Arrow) or condtion:
-            raise ValueError('vec must be Arrow and next_vec must be ArmNode or None')
-        self.vec = vec
-        self.next_vec = next_vec
-    
-    def set_next(self, next_vec=None):
-        self.next_vec = next_vec
-
 class AxisNode:
-    def __init__(self, axis, scopes, name='default-axis'):
-        if scopes == None:
+    def __init__(self, axis, anchor, effect_vec, effect_axis, name='default-axis'):
+        self.scopes = effect_vec + effect_axis
+        if self.scopes == None:
             raise ValueError('scopes cant be None')
-        for scope in scopes:
+        for scope in self.scopes:
             correct_type = isinstance(scope, Arrow) or isinstance(scope, Vec)
             if not correct_type:
                 raise ValueError(str(scope) + ' is not a arrow')
         self.axis = axis
-        self.scopes = scopes
+        self.anchor = anchor
+        self.effect_vec = effect_vec
+        self.effect_axis = effect_axis
         self.name = name
+        self.edges = [Arrow(anchor, vec, self.edge_name(vec)) for vec in effect_vec]
+
+    def rebuild(self):
+        for i, edge in enumerate(self.edges):
+            edge.rebuild(self.anchor, self.effect_vec[i])
+
+    def edge_name(self, vec):
+        return self.name + '-' + vec.name
+
+    def update(self):
+        for i, edge in enumerate(self.edges):
+             self.effect_vec[i].dcopy(edge.head)
 
     def __str__(self):
         return self.name + '|' + str(self.axis) + str([str(scope) for scope in self.scopes])
 
     def arotate(self, theta):
-        for vec in self.scopes:
-            vec.arotate(self.axis, theta)
+        self.rebuild()
+        for edge in self.edges:
+            edge.arotate(self.axis, theta)
+        self.update()
+        for axis in self.effect_axis:
+            axis.arotate(self.axis, theta)
         return self
     
 
 
 class Joint:
-    def __init__(self, axis_nodes, root, name='default-joint'):
+    def __init__(self, axis_nodes, vec_nodes, name='default-joint'):
         self.axis_list = axis_nodes
         self.name = name
-        self.root = root
-        self.current = root
+        self.vec_nodes = vec_nodes
+        self.edges = []
         self.build()
 
     def __str__(self):
@@ -143,6 +158,13 @@ class Joint:
         self.axis_map = {}
         for axis_node in self.axis_list:
             self.axis_map[axis_node.name] = axis_node
+        for i, vec_node in enumerate(self.vec_nodes):
+            if i == 0:
+                continue
+            self.edges.append(Arrow(self.vec_nodes[i-1], vec_node, self.vec_name(vec_node)))
+
+    def vec_name(self, vec):
+        return self.name + '<->' + vec.name
     
     def arotate(self, axis_name, theta):
         if axis_name in self.axis_map.keys():
@@ -150,17 +172,13 @@ class Joint:
         return self
 
     def coordinate(self, linspace=1000):
-        if self.current == None:
-            return {}
         coo = {'x': np.array([]), 'y': np.array([]), 'z': np.array([])}
-        while self.current:
-            tmp = self.current.vec.line(linspace)
+        for edge in self.edges:
+            edge.update()
+            tmp = edge.line(linspace)
             coo['x'] = np.append(coo['x'], tmp['x'])
             coo['y'] = np.append(coo['y'], tmp['y'])
             coo['z'] = np.append(coo['z'], tmp['z'])
-            self.current = self.current.next_vec
-        self.current = self.root
-        print (coo)
         return coo
         
 
